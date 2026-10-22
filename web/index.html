@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Video Prompt Forge — AI 视频提示词工厂</title>
+<style>
+  body{font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;max-width:760px;margin:0 auto;padding:20px;background:#0f1115;color:#e8eaf0}
+  h1{font-size:22px;margin:8px 0 4px} .sub{color:#9aa3b2;font-size:13px;margin-bottom:18px}
+  label{display:block;font-size:13px;color:#9aa3b2;margin:14px 0 6px}
+  textarea,select{width:100%;box-sizing:border-box;background:#1a1e27;color:#e8eaf0;border:1px solid #333a4a;border-radius:10px;padding:10px;font-size:15px}
+  .row{display:flex;gap:10px}.row>div{flex:1}
+  button{width:100%;margin-top:18px;padding:12px;border:0;border-radius:10px;background:#f5c518;color:#111;font-size:16px;font-weight:700;cursor:pointer}
+  pre{white-space:pre-wrap;word-break:break-word;background:#1a1e27;border:1px solid #333a4a;border-radius:10px;padding:12px;font-size:13px;line-height:1.6}
+  .card{margin-top:16px}.card b{color:#f5c518;font-size:13px}
+  .copy{width:auto;padding:4px 12px;font-size:12px;margin:0 0 6px;float:right;background:#2a3040;color:#e8eaf0}
+</style>
+</head>
+<body>
+<h1>🎬 Video Prompt Forge</h1>
+<div class="sub">AI 视频提示词工厂 · 一句中文 → 可灵 / Runway / Sora / Veo 专业英文提示词（离线版）</div>
+
+<label>你的中文想法</label>
+<textarea id="idea" rows="3" placeholder="例如：巨人女子侧躺在草坡上看日落，旁边有个滑板少年">巨人女子侧躺在草坡上看日落，旁边有个滑板少年</textarea>
+
+<div class="row">
+  <div><label>平台</label><select id="platform">
+    <option value="kling">Kling 可灵</option><option value="runway">Runway</option>
+    <option value="sora">Sora</option><option value="veo">Veo</option><option value="generic">通用</option>
+  </select></div>
+  <div><label>风格</label><select id="style">
+    <option value="cinematic">电影感</option><option value="photorealistic">写实</option>
+    <option value="anime">动漫</option><option value="commercial">广告大片</option>
+  </select></div>
+  <div><label>运镜</label><select id="camera">
+    <option value="auto">自动</option><option value="push_in">缓慢推近</option><option value="pan">横摇全景</option>
+    <option value="tracking">跟踪跟随</option><option value="orbit">环绕</option><option value="aerial">航拍</option>
+    <option value="static">固定镜头</option><option value="pull_out">缓缓拉开</option>
+  </select></div>
+</div>
+
+<button onclick="forge()">🔨 生成提示词</button>
+
+<div class="card"><b>Main Prompt</b><button class="copy" onclick="cp('outMain')">复制</button><pre id="outMain">点击生成…</pre></div>
+<div class="card"><b>Negative Prompt</b><button class="copy" onclick="cp('outNeg')">复制</button><pre id="outNeg"></pre></div>
+<div class="card"><b>建议参数</b><pre id="outSug"></pre></div>
+
+<script>
+const CAM={auto:"smooth cinematic camera movement",push_in:"slow push-in, growing sense of intimacy",pan:"slow scenic pan from left to right",tracking:"smooth tracking shot following the subject",orbit:"slow orbit around the subject",aerial:"aerial drone shot, sweeping over the scene",static:"static locked-off shot",pull_out:"slow pull-out revealing the full scene",handheld:"subtle handheld feel, documentary realism"};
+const STY={cinematic:["dramatic natural lighting","cinematic, film grain, shallow depth of field, 24fps motion feel"],photorealistic:["soft natural daylight","photorealistic, ultra detailed, 8k, realistic skin texture"],anime:["bright stylized lighting","anime style, clean line art, vibrant colors, studio-quality animation"],commercial:["studio-quality softbox lighting","high-end commercial look, clean composition, premium product-film quality"]};
+const NEG={kling:"deformed hands, extra fingers, blurry, low quality, watermark, distorted face, morphing face",runway:"blurry, distorted, watermark, low quality, flickering",sora:"physically implausible motion, distorted anatomy, text artifacts, watermark",veo:"blurry, low quality, watermark, distorted",generic:"blurry, low quality, watermark, distorted, deformed"};
+const SUG={kling:"时长 5–10s · 画幅 16:9 或 9:16 · 图生视频友好，一个镜头只给一个明确动作",runway:"镜头控制在 Runway 界面里另加 Camera Controls（pan/tilt/zoom）",sora:"长描述效果更好：把物理、材质、时间写明确",veo:"电影感写法；需要声音时另加一行 Audio 描述",generic:"结构：主体 + 动作 + 场景 + 运镜 + 光线 + 风格"};
+const KW=[["日落","at golden hour, warm sunset light"],["黄昏","at dusk, warm fading light"],["夜晚","at night, moody night lighting"],["草地","on a grassy field"],["草坡","on a grassy hillside"],["海边","by the seaside"],["城市","in a modern city"],["雨","in gentle rain, wet reflections"],["雪","in falling snow"],["微笑","smiling softly"],["奔跑","running"],["走路","walking"],["坐","sitting"],["躺","lying down"],["滑板","with a skateboard"],["汽车","with a car"],["女孩","a young woman"],["女子","a woman"],["美女","a beautiful young woman"],["男人","a man"],["少年","a teenage boy"],["猫","a cat"],["狗","a dog"]];
+function forge(){
+  const idea=document.getElementById('idea').value.trim()||"（未输入）";
+  const p=document.getElementById('platform').value, s=document.getElementById('style').value, c=document.getElementById('camera').value;
+  const hits=[...new Set(KW.filter(([zh])=>idea.includes(zh)).map(([,en])=>en))];
+  const subject=hits.length?hits.join(", "):"the described subject in motion";
+  document.getElementById('outMain').textContent=[subject,"original idea: "+idea,CAM[c],STY[s][0],STY[s][1]].join(", ");
+  document.getElementById('outNeg').textContent=NEG[p];
+  document.getElementById('outSug').textContent=SUG[p]+"\n运镜："+CAM[c];
+}
+function cp(id){navigator.clipboard.writeText(document.getElementById(id).textContent)}
+forge();
+</script>
+</body>
+</html>
